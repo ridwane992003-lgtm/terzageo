@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#3b82f6">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TerzaGeo">
+<meta name="application-name" content="TerzaGeo">
+<meta name="description" content="Simulation interactive de consolidation 1D — Terzaghi 1925">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<title>Consolidation de Terzaghi — Simulation Interactive</title>
+<style>
+  /* ===== RESET & BASE ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-deep:    #0d1117;
+    --bg-panel:   #161b22;
+    --bg-card:    #1c2230;
+    --bg-input:   #0d1117;
+    --border:     #2d3748;
+    --border-hi:  #4a5568;
+    --accent:     #3b82f6;
+    --accent2:    #06b6d4;
+    --accent3:    #10b981;
+    --warn:       #f59e0b;
+    --danger:     #ef4444;
+    --text-hi:    #f0f6ff;
+    --text-mid:   #94a3b8;
+    --text-lo:    #4a5568;
+    --font-ui:    'Segoe UI', system-ui, sans-serif;
+    --font-mono:  'Consolas', 'Courier New', monospace;
+    --r:          6px;
+  }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-hi);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    height: 100vh;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: 44px 1fr;
+    grid-template-columns: 260px 1fr 300px;
+    grid-template-areas:
+      "header header header"
+      "left   center right";
+  }
+
+  /* ===== HEADER ===== */
+  header {
+    grid-area: header;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 16px;
+  }
+  .logo {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    color: var(--text-hi);
+  }
+  .logo span { color: var(--accent); }
+  .header-sep { flex: 1; }
+  .badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: rgba(59,130,246,.15);
+    color: var(--accent);
+    border: 1px solid rgba(59,130,246,.3);
+    letter-spacing: .5px;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent3);
+    box-shadow: 0 0 6px var(--accent3);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ===== PANELS ===== */
+  .panel-left {
+    grid-area: left;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .panel-right {
+    grid-area: right;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .center-area {
+    grid-area: center;
+    display: grid;
+    grid-template-rows: 1fr 200px;
+    overflow: hidden;
+  }
+
+  /* ===== SECTION TITLES ===== */
+  .sec-title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-lo);
+    padding: 10px 14px 6px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sec-title::before {
+    content: '';
+    width: 3px; height: 12px;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+
+  /* ===== FORM ELEMENTS ===== */
+  .param-block { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .param-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .param-label { color: var(--text-mid); font-size: 12px; }
+  .param-value {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent2);
+    min-width: 60px;
+    text-align: right;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    margin: 4px 0;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg-deep);
+    cursor: pointer;
+  }
+  select {
+    width: 100%;
+    background: var(--bg-input);
+    color: var(--text-hi);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 5px 8px;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  select:focus { border-color: var(--accent); }
+
+  /* ===== CHARGE CONTROL ===== */
+  .charge-block { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .charge-display {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--warn);
+    margin: 6px 0;
+    text-shadow: 0 0 20px rgba(245,158,11,.3);
+  }
+  .charge-unit { font-size: 12px; color: var(--text-mid); }
+  .btn-row { display: flex; gap: 6px; margin-top: 8px; }
+  .btn {
+    flex: 1;
+    padding: 6px 4px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-hi);
+    border-radius: var(--r);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    transition: all .15s;
+    text-align: center;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(59,130,246,.08); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #2563eb; }
+  .btn.danger { background: rgba(239,68,68,.1); border-color: var(--danger); color: var(--danger); }
+  .btn.danger:hover { background: rgba(239,68,68,.2); }
+  .btn.success { background: rgba(16,185,129,.1); border-color: var(--accent3); color: var(--accent3); }
+  .btn.success:hover { background: rgba(16,185,129,.2); }
+
+  /* ===== PLAYBACK ===== */
+  .playback-block { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .play-btns { display: flex; gap: 6px; margin-bottom: 8px; }
+  .play-btn {
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-hi);
+    border-radius: var(--r);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all .15s;
+  }
+  .play-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .play-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .speed-row { display: flex; align-items: center; gap: 8px; color: var(--text-mid); font-size: 11px; }
+
+  /* ===== TIME BAR ===== */
+  .time-block { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .time-track {
+    position: relative;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    margin: 8px 0;
+    cursor: pointer;
+  }
+  .time-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px;
+    pointer-events: none;
+    width: 0%;
+  }
+  .time-thumb {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%,-50%);
+    width: 14px; height: 14px;
+    background: #fff;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    cursor: grab;
+    left: 0%;
+  }
+  .time-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-lo); }
+
+  /* ===== CANVAS AREA ===== */
+  #soilCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #0a0f1a;
+  }
+
+  /* ===== CHARTS ===== */
+  .charts-area {
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0;
+  }
+  .chart-cell {
+    border-right: 1px solid var(--border);
+    padding: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  .chart-cell:last-child { border-right: none; }
+  .chart-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    color: var(--text-lo);
+    margin-bottom: 2px;
+  }
+  .chart-val {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-hi);
+    margin-bottom: 2px;
+  }
+  .chart-unit { font-size: 9px; color: var(--text-lo); }
+  canvas.mini { display: block; width: 100%; height: 80px; }
+
+  /* ===== RIGHT PANEL — STATS ===== */
+  .stat-grid { padding: 10px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 8px 10px;
+  }
+  .stat-card-label { font-size: 9px; color: var(--text-lo); text-transform: uppercase; letter-spacing: .8px; }
+  .stat-card-value {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-hi);
+    margin-top: 2px;
+  }
+  .stat-card-unit { font-size: 10px; color: var(--text-mid); }
+
+  .stat-card.accent .stat-card-value { color: var(--accent); }
+  .stat-card.warn   .stat-card-value { color: var(--warn); }
+  .stat-card.green  .stat-card-value { color: var(--accent3); }
+  .stat-card.cyan   .stat-card-value { color: var(--accent2); }
+  .stat-card.red    .stat-card-value { color: var(--danger); }
+
+  /* ===== CONSOLIDATION BAR ===== */
+  .consol-bar-wrap { padding: 0 14px 10px; }
+  .consol-bar-track {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 6px 0;
+  }
+  .consol-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent3), var(--accent2));
+    border-radius: 4px;
+    transition: width .3s;
+    width: 0%;
+  }
+  .consol-bar-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-lo); }
+
+  /* ===== THEORY PANEL ===== */
+  .theory-block { padding: 10px 14px; border-top: 1px solid var(--border); }
+  .theory-eq {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--accent2);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 6px 8px;
+    margin-top: 6px;
+    line-height: 1.6;
+  }
+
+
+  /* ===== PWA INSTALL BUTTON ===== */
+  #installBtn {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: linear-gradient(135deg, #3b82f6, #06b6d4);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: .3px;
+    box-shadow: 0 2px 12px rgba(59,130,246,.4);
+    animation: glow 2s infinite;
+  }
+  #installBtn:hover { opacity: .9; transform: scale(1.03); }
+  @keyframes glow {
+    0%,100% { box-shadow: 0 2px 12px rgba(59,130,246,.4); }
+    50%      { box-shadow: 0 2px 20px rgba(59,130,246,.8); }
+  }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg-panel); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header>
+  <div class="logo">Terza<span>Geo</span></div>
+  <div class="badge">SIMULATION v1.0</div>
+  <div class="badge" style="color:var(--accent3);border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.1)">
+    Consolidation 1D — Terzaghi 1925
+  </div>
+  <div class="header-sep"></div>
+  <span style="font-size:11px;color:var(--text-mid)">Université Amadou Mahtar Mbow · Sciences de la Mer</span>
+  <div class="status-dot"></div>
+  <button id="installBtn" onclick="installApp()" title="Installer TerzaGeo comme application">
+    ⬇ Installer l'app
+  </button>
+</header>
+
+<!-- ===== LEFT PANEL ===== -->
+<div class="panel-left">
+
+  <!-- CHARGE -->
+  <div class="sec-title">Charge Appliquée</div>
+  <div class="charge-block">
+    <div class="charge-display" id="chargeDisplay">0 <span class="charge-unit">kPa</span></div>
+    <input type="range" id="chargeSlider" min="0" max="1000" value="0" step="1">
+    <div class="btn-row">
+      <div class="btn" id="btnMinus10">−10</div>
+      <div class="btn" id="btnPlus10">+10</div>
+      <div class="btn primary" id="btnApply">Appliquer</div>
+      <div class="btn danger" id="btnReset">Reset</div>
+    </div>
+  </div>
+
+  <!-- PLAYBACK -->
+  <div class="sec-title">Contrôle Animation</div>
+  <div class="playback-block">
+    <div class="play-btns">
+      <div class="play-btn" id="btnPlay" title="Lecture">▶</div>
+      <div class="play-btn" id="btnPause" title="Pause">⏸</div>
+      <div class="play-btn" id="btnStep" title="Étape par étape">⏭</div>
+      <div class="play-btn" id="btnRewind" title="Rewind">⏮</div>
+    </div>
+    <div class="speed-row">
+      <span>Vitesse</span>
+      <input type="range" id="speedSlider" min="0.1" max="10" value="1" step="0.1" style="flex:1">
+      <span id="speedVal" style="font-family:var(--font-mono);color:var(--accent2)">1.0×</span>
+    </div>
+  </div>
+
+  <!-- TIME BAR -->
+  <div class="sec-title">Ligne de Temps</div>
+  <div class="time-block">
+    <div id="timeDisplay" style="font-family:var(--font-mono);color:var(--accent2);font-size:12px;text-align:center;margin-bottom:4px">
+      t = 0.0 ans
+    </div>
+    <div class="time-track" id="timeTrack">
+      <div class="time-fill" id="timeFill"></div>
+      <div class="time-thumb" id="timeThumb"></div>
+    </div>
+    <div class="time-labels">
+      <span>0</span><span id="timeEnd">T₁₀₀</span>
+    </div>
+  </div>
+
+  <!-- SOL TYPE -->
+  <div class="sec-title">Type de Sol</div>
+  <div class="param-block">
+    <div class="param-label">Matériau</div>
+    <select id="soilType">
+      <option value="soft_clay">Argile molle</option>
+      <option value="firm_clay">Argile ferme</option>
+      <option value="silt">Limon</option>
+      <option value="sand">Sable fin</option>
+    </select>
+  </div>
+
+  <!-- PARAMÈTRES -->
+  <div class="sec-title">Paramètres Physiques</div>
+
+  <div class="param-block">
+    <div class="param-row">
+      <span class="param-label">Épaisseur H (m)</span>
+      <span class="param-value" id="vH">10.0</span>
+    </div>
+    <input type="range" id="pH" min="1" max="30" value="10" step="0.5">
+  </div>
+
+  <div class="param-block">
+    <div class="param-row">
+      <span class="param-label">Cv (m²/an)</span>
+      <span class="param-value" id="vCv">1.0</span>
+    </div>
+    <input type="range" id="pCv" min="0.01" max="20" value="1" step="0.01">
+  </div>
+
+  <div class="param-block">
+    <div class="param-row">
+      <span class="param-label">Porosité n</span>
+      <span class="param-value" id="vN">0.50</span>
+    </div>
+    <input type="range" id="pN" min="0.1" max="0.8" value="0.5" step="0.01">
+  </div>
+
+  <div class="param-block">
+    <div class="param-row">
+      <span class="param-label">Perméabilité k (m/s)</span>
+      <span class="param-value" id="vK">1e-9</span>
+    </div>
+    <input type="range" id="pK" min="-12" max="-4" value="-9" step="0.1">
+  </div>
+
+  <div class="param-block">
+    <div class="param-row">
+      <span class="param-label">Densité ρs (t/m³)</span>
+      <span class="param-value" id="vRho">2.70</span>
+    </div>
+    <input type="range" id="pRho" min="2.0" max="3.0" value="2.7" step="0.05">
+  </div>
+
+  <div class="param-block">
+    <div class="param-row">
+      <span class="param-label">Compressibilité mv (m²/kN)</span>
+      <span class="param-value" id="vMv">2.0e-4</span>
+    </div>
+    <input type="range" id="pMv" min="-6" max="-2" value="-3.7" step="0.05">
+  </div>
+
+  <div class="param-block">
+    <div class="param-row">
+      <span class="param-label">Nappe d (m)</span>
+      <span class="param-value" id="vGW">0.0</span>
+    </div>
+    <input type="range" id="pGW" min="0" max="5" value="0" step="0.1">
+  </div>
+
+</div>
+
+<!-- ===== CENTER ===== -->
+<div class="center-area">
+  <canvas id="soilCanvas"></canvas>
+  <div class="charts-area">
+    <div class="chart-cell">
+      <div class="chart-label">Pression Interstitielle</div>
+      <div class="chart-val" id="cvU">0.0</div>
+      <div class="chart-unit">kPa</div>
+      <canvas class="mini" id="chartU"></canvas>
+    </div>
+    <div class="chart-cell">
+      <div class="chart-label">Contrainte Effective</div>
+      <div class="chart-val" id="cvSigma">0.0</div>
+      <div class="chart-unit">kPa</div>
+      <canvas class="mini" id="chartSigma"></canvas>
+    </div>
+    <div class="chart-cell">
+      <div class="chart-label">Tassement S(t)</div>
+      <div class="chart-val" id="cvS">0.0</div>
+      <div class="chart-unit">mm</div>
+      <canvas class="mini" id="chartS"></canvas>
+    </div>
+    <div class="chart-cell">
+      <div class="chart-label">Hauteur H(t)</div>
+      <div class="chart-val" id="cvH">—</div>
+      <div class="chart-unit">m</div>
+      <canvas class="mini" id="chartH"></canvas>
+    </div>
+    <div class="chart-cell">
+      <div class="chart-label">Consolidation U</div>
+      <div class="chart-val" id="cvUdeg">0.0</div>
+      <div class="chart-unit">%</div>
+      <canvas class="mini" id="chartUdeg"></canvas>
+    </div>
+    <div class="chart-cell">
+      <div class="chart-label">Débit Eau q</div>
+      <div class="chart-val" id="cvQ">0.0</div>
+      <div class="chart-unit">m³/m²/an</div>
+      <canvas class="mini" id="chartQ"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RIGHT PANEL ===== -->
+<div class="panel-right">
+  <div class="sec-title">Valeurs en Temps Réel</div>
+  <div class="stat-grid">
+    <div class="stat-card warn">
+      <div class="stat-card-label">Charge σ</div>
+      <div class="stat-card-value" id="sCharge">0</div>
+      <div class="stat-card-unit">kPa</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-card-label">Press. Inters. u</div>
+      <div class="stat-card-value" id="sU">0</div>
+      <div class="stat-card-unit">kPa</div>
+    </div>
+    <div class="stat-card accent">
+      <div class="stat-card-label">Contrainte eff. σ'</div>
+      <div class="stat-card-value" id="sSigmaP">0</div>
+      <div class="stat-card-unit">kPa</div>
+    </div>
+    <div class="stat-card cyan">
+      <div class="stat-card-label">Tassement S</div>
+      <div class="stat-card-value" id="sSettle">0.0</div>
+      <div class="stat-card-unit">mm</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">Hauteur H</div>
+      <div class="stat-card-value" id="sHeight">—</div>
+      <div class="stat-card-unit">m</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-card-label">Consolidation U</div>
+      <div class="stat-card-value" id="sU_deg">0</div>
+      <div class="stat-card-unit">%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">Temps écoulé</div>
+      <div class="stat-card-value" id="sTime">0.00</div>
+      <div class="stat-card-unit">années</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">Facteur Temps Tv</div>
+      <div class="stat-card-value" id="sTv">0.000</div>
+      <div class="stat-card-unit">—</div>
+    </div>
+  </div>
+
+  <!-- BARRE CONSOLIDATION -->
+  <div class="sec-title">Degré de Consolidation</div>
+  <div class="consol-bar-wrap">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-mid)">
+      <span>U = <span id="consolPct">0.0</span>%</span>
+      <span>U₉₀ atteint: <span id="u90flag" style="color:var(--text-lo)">Non</span></span>
+    </div>
+    <div class="consol-bar-track">
+      <div class="consol-bar-fill" id="consolFill"></div>
+    </div>
+    <div class="consol-bar-labels"><span>0%</span><span>U₅₀</span><span>U₉₀</span><span>100%</span></div>
+  </div>
+
+  <!-- PROFIL U(z) -->
+  <div class="sec-title">Profil u(z) — Isochrones</div>
+  <canvas id="profileCanvas" style="display:block;width:100%;height:150px;padding:0 14px;box-sizing:border-box;background:var(--bg-card)"></canvas>
+
+  <!-- THÉORIE -->
+  <div class="sec-title">Équations Fondamentales</div>
+  <div class="theory-block">
+    <div class="theory-eq">
+∂u/∂t = Cv · ∂²u/∂z²
+&nbsp;
+Tv = Cv·t / Hdr²
+&nbsp;
+U(t) = 1 − Σ (8/M²π²)·e^(−M²Tv)
+&nbsp;
+S∞ = mv · Δσ · H
+    </div>
+  </div>
+
+  <!-- INFOS SOL -->
+  <div class="sec-title">Infos Sol Actuel</div>
+  <div class="param-block" id="soilInfo" style="font-size:11px;color:var(--text-mid);line-height:1.7"></div>
+
+</div>
+
+<script>
+// ======================================================
+// TERZAGHI CONSOLIDATION SIMULATION
+// Université Amadou Mahtar Mbow — Sciences de la Mer
+// Théorie : Terzaghi (1925) — Consolidation 1D
+// ======================================================
+
+// ---- CANVAS SETUP ----
+const soilCanvas  = document.getElementById('soilCanvas');
+const ctx         = soilCanvas.getContext('2d');
+const profCanvas  = document.getElementById('profileCanvas');
+const profCtx     = profCanvas.getContext('2d');
+
+// ---- MINI CHART CANVASES ----
+const miniCanvases = {
+  U:    document.getElementById('chartU'),
+  Sig:  document.getElementById('chartSigma'),
+  S:    document.getElementById('chartS'),
+  H:    document.getElementById('chartH'),
+  Udeg: document.getElementById('chartUdeg'),
+  Q:    document.getElementById('chartQ'),
+};
+const miniCtx = {};
+Object.keys(miniCanvases).forEach(k => {
+  miniCtx[k] = miniCanvases[k].getContext('2d');
+});
+
+// ---- STATE ----
+const state = {
+  // Charge
+  targetCharge: 0,
+  appliedCharge: 0,
+  pendingCharge: 0,    // valeur dans slider avant "Appliquer"
+
+  // Temps simulation
+  time: 0,             // années
+  maxTime: 100,        // années (T100)
+  playing: false,
+  speed: 1.0,
+  stepMode: false,
+
+  // Paramètres sol
+  H0: 10,              // m, épaisseur initiale
+  Cv: 1.0,             // m²/an
+  n: 0.50,             // porosité
+  k: 1e-9,             // m/s
+  rho: 2.70,           // t/m³
+  mv: 2e-4,            // m²/kN = 1/MPa compressibilité
+  gw: 0,               // profondeur nappe
+
+  // Sortie
+  U_deg: 0,            // degré de consolidation [0,1]
+  settlement: 0,       // mm
+  settlementMax: 0,    // mm (à charge pleine, U=1)
+  Tv: 0,               // facteur temps
+  u_mean: 0,           // pression interstitielle moyenne kPa
+  sigma_prime: 0,      // contrainte effective kPa
+  q: 0,                // débit m³/m²/an
+};
+
+// ---- HISTORIQUE GRAPHIQUES ----
+const history = { U: [], Sig: [], S: [], H: [], Udeg: [], Q: [], T: [] };
+const MAX_HIST = 300;
+
+// ---- GRAINS (particles) ----
+let grains = [];
+const N_GRAINS = 350;
+
+// ---- TYPES DE SOL ----
+const SOIL_TYPES = {
+  soft_clay: { name: 'Argile molle',  Cv: 0.5,  n: 0.60, k: 1e-10, mv: 5e-4,  color: '#7c6c5e', label: 'Très compressible, faible perméabilité' },
+  firm_clay: { name: 'Argile ferme',  Cv: 1.5,  n: 0.45, k: 1e-9,  mv: 2e-4,  color: '#8b7355', label: 'Compressibilité modérée' },
+  silt:      { name: 'Limon',         Cv: 5.0,  n: 0.40, k: 1e-7,  mv: 1e-4,  color: '#9e9268', label: 'Consolidation rapide' },
+  sand:      { name: 'Sable fin',     Cv: 15.0, n: 0.35, k: 1e-5,  mv: 3e-5,  color: '#c9b78c', label: 'Drainage quasi-instantané' },
+};
+
+// ---- COULEURS ----
+const COL = {
+  grain:   ['#8b7355','#7c6c5e','#9e8866','#6b5a48','#a0906e'],
+  water:   'rgba(30,80,180,0.45)',
+  waterHi: 'rgba(60,120,220,0.6)',
+  plate:   '#cbd5e1',
+  arrow:   '#f59e0b',
+  flow:    '#60a5fa',
+};
+
+// ======================================================
+// INITIALISATION DES GRAINS
+// ======================================================
+function initGrains() {
+  grains = [];
+  const W = soilCanvas.width;
+  const H = soilCanvas.height;
+  const soilTop = H * 0.15;
+  const soilBot = H * 0.90;
+  const soilH = soilBot - soilTop;
+
+  // Générer des grains répartis dans la couche de sol
+  for (let i = 0; i < N_GRAINS; i++) {
+    const frac = Math.random(); // position normalisée [0,1] dans la couche
+    const r = 4 + Math.random() * 7; // rayon [4, 11] px
+    grains.push({
+      x: 30 + Math.random() * (W - 60),
+      y0: soilTop + frac * soilH, // position de référence
+      y:  soilTop + frac * soilH, // position courante
+      frac: frac,
+      r: r,
+      col: COL.grain[Math.floor(Math.random() * COL.grain.length)],
+      wobble: Math.random() * Math.PI * 2,
+      wobbleSpeed: 0.5 + Math.random() * 1.5,
+    });
+  }
+}
+
+// ======================================================
+// THÉORIE TERZAGHI — CALCULS PHYSIQUES
+// ======================================================
+
+/**
+ * Degré de consolidation moyen U(Tv)
+ * Série de Fourier tronquée à 50 termes
+ */
+function calcU(Tv) {
+  if (Tv <= 0) return 0;
+  let sum = 0;
+  for (let m = 0; m < 50; m++) {
+    const M = (2 * m + 1) * Math.PI / 2;
+    sum += (8 / (M * M)) * Math.exp(-M * M * Tv);
+  }
+  return 1 - sum;  // U ∈ [0,1]
+}
+
+/**
+ * Profil de pression interstitielle u(z, Tv) / Δσ
+ * Drainage double (drainage en haut et en bas, Hdr = H/2)
+ */
+function calcUprofile(z, Tv, H) {
+  // z : profondeur depuis la surface
+  // Hdr = H/2 pour drainage double
+  const Hdr = H / 2;
+  const zn = z / Hdr;  // z normalisé
+  let sum = 0;
+  for (let m = 0; m < 20; m++) {
+    const M = (2 * m + 1) * Math.PI / 2;
+    sum += (4 / Math.PI) * ((-1) ** m / (2 * m + 1)) *
+           Math.cos(M * zn) * Math.exp(-M * M * Tv);
+  }
+  return Math.max(0, Math.min(1, sum));
+}
+
+/**
+ * Mise à jour complète de l'état physique
+ */
+function updatePhysics() {
+  const charge = state.appliedCharge;
+  const Hdr = state.H0 / 2;  // drainage double
+  state.Tv = state.Cv * state.time / (Hdr * Hdr);
+  state.U_deg = calcU(state.Tv);
+
+  // Tassement final Sf = mv * Δσ * H
+  state.settlementMax = state.mv * charge * state.H0 * 1000; // mm
+
+  // Tassement actuel
+  state.settlement = state.U_deg * state.settlementMax;
+
+  // Pression interstitielle moyenne
+  state.u_mean = charge * (1 - state.U_deg);
+
+  // Contrainte effective σ' = σ - u
+  state.sigma_prime = charge * state.U_deg;
+
+  // Débit : q ≈ mv * Cv * charge * dU/dt (approximation)
+  // dU/dTv ≈ M₁² * (8/π²) * exp(-M₁²Tv) (premier terme)
+  const M1 = Math.PI / 2;
+  const dUdTv = (8 / (Math.PI * Math.PI)) * M1 * M1 * Math.exp(-M1 * M1 * state.Tv);
+  const dUdt = dUdTv * state.Cv / (Hdr * Hdr);
+  state.q = Math.abs(state.mv * charge * state.H0 * dUdt); // m³/m²/an
+}
+
+/**
+ * Calcul maxTime = T pour U > 99.9%
+ */
+function updateMaxTime() {
+  const Hdr = state.H0 / 2;
+  // Tv pour U=99% ~ 3.0 (valeur empirique Terzaghi)
+  state.maxTime = 3.0 * Hdr * Hdr / state.Cv;
+  document.getElementById('timeEnd').textContent = state.maxTime.toFixed(1) + ' ans';
+}
+
+// ======================================================
+// MISE À JOUR POSITION DES GRAINS
+// ======================================================
+function updateGrains(t) {
+  const W = soilCanvas.width;
+  const H = soilCanvas.height;
+  const soilTop0 = H * 0.15;
+  const soilBot  = H * 0.90;
+  const soilH0   = soilBot - soilTop0;
+
+  // Le tassement comprime la couche depuis le haut
+  const settleFrac = state.settlement / (state.settlementMax + 0.001);
+  const compress = state.U_deg;  // 0 = pas comprimé, 1 = pleinement
+
+  grains.forEach(g => {
+    // Chaque grain se rapproche de ses voisins selon U(z, Tv)
+    // La compression locale dépend du profil d'isochrone
+    const zPos = g.frac * state.H0;
+    const localU = calcUprofile(zPos, state.Tv, state.H0);
+
+    // Compression locale de la hauteur
+    const localSettle = localU * state.settlementMax / 1000; // en m
+    const soilTopNew = soilTop0 + (state.settlement / 1000 / state.H0) * soilH0;
+    const soilHnew = soilH0 - (compress * state.settlementMax / 1000 / state.H0) * soilH0;
+
+    // Recalcul position y
+    g.y = soilTopNew + g.frac * soilHnew;
+
+    // Micro oscillation réaliste
+    g.wobble += g.wobbleSpeed * 0.02;
+  });
+}
+
+// ======================================================
+// DESSIN PRINCIPAL — CANVAS SOL
+// ======================================================
+function drawSoil(timestamp) {
+  const W = soilCanvas.width;
+  const H = soilCanvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // ---- Fond ----
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#0a0e1a');
+  bgGrad.addColorStop(1, '#0d1117');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // ---- Géométrie ----
+  const soilTop0 = H * 0.15;
+  const soilBot  = H * 0.90;
+  const soilH0   = soilBot - soilTop0;
+  const compress = state.U_deg;
+  const settlePx = (state.settlement / 1000 / state.H0) * soilH0;
+  const soilTopNow = soilTop0 + settlePx;
+  const soilHnow   = soilH0 - compress * (state.settlementMax / 1000 / state.H0) * soilH0;
+  const soilBotNow = soilTopNow + soilHnow;
+
+  // ---- Eau (fond bleu translucide) ----
+  const waterGrad = ctx.createLinearGradient(0, soilTopNow, 0, soilBotNow);
+  waterGrad.addColorStop(0, 'rgba(20,60,160,0.35)');
+  waterGrad.addColorStop(1, 'rgba(10,30,100,0.55)');
+  ctx.fillStyle = waterGrad;
+  ctx.fillRect(20, soilTopNow, W - 40, soilHnow);
+
+  // ---- Grains ----
+  updateGrains(timestamp);
+  grains.forEach(g => {
+    if (g.y < soilTopNow || g.y > soilBotNow) return;
+    ctx.beginPath();
+    ctx.ellipse(
+      g.x, g.y,
+      g.r, g.r * (0.85 + 0.1 * Math.sin(g.wobble)),
+      g.wobble * 0.1,
+      0, Math.PI * 2
+    );
+    // Gradient grain
+    const grd = ctx.createRadialGradient(g.x - g.r*0.3, g.y - g.r*0.3, 0, g.x, g.y, g.r);
+    grd.addColorStop(0, lighten(g.col, 40));
+    grd.addColorStop(1, g.col);
+    ctx.fillStyle = grd;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  });
+
+  // ---- Eau visible entre les grains (effets) ----
+  // Petits reflets bleus
+  const nReflets = Math.floor(40 * (1 - state.U_deg * 0.7));
+  const rng = seededRNG(42);
+  for (let i = 0; i < nReflets; i++) {
+    const x = 30 + rng() * (W - 60);
+    const y = soilTopNow + rng() * soilHnow;
+    const r = 2 + rng() * 4;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(80,150,255,${0.1 + rng() * 0.15})`;
+    ctx.fill();
+  }
+
+  // ---- Flèches d'écoulement d'eau ----
+  if (state.appliedCharge > 0 && state.U_deg < 0.995) {
+    const nArrows = 6;
+    const flowIntensity = (1 - state.U_deg) * state.appliedCharge / 200;
+    for (let i = 0; i < nArrows; i++) {
+      const x = 40 + (i / (nArrows - 1)) * (W - 80);
+      // Flèches montantes (drainage vers surface)
+      drawFlowArrow(ctx, x, soilBotNow - soilHnow * 0.3, x, soilTopNow - 10, flowIntensity);
+      // Flèches descendantes (drainage vers fond si double drainage)
+      if (i % 2 === 0) {
+        drawFlowArrow(ctx, x, soilTopNow + soilHnow * 0.3, x, soilBotNow + 10, flowIntensity * 0.6);
+      }
+    }
+  }
+
+  // ---- Plaque rigide ----
+  const plateH = 16;
+  const plateY = soilTopNow - plateH;
+  const plateGrd = ctx.createLinearGradient(0, plateY, 0, plateY + plateH);
+  plateGrd.addColorStop(0, '#e2e8f0');
+  plateGrd.addColorStop(1, '#94a3b8');
+  ctx.fillStyle = plateGrd;
+  ctx.beginPath();
+  ctx.roundRect(15, plateY, W - 30, plateH, 3);
+  ctx.fill();
+  ctx.strokeStyle = '#64748b';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // Texture plaque
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 1;
+  for (let xx = 30; xx < W - 30; xx += 20) {
+    ctx.beginPath();
+    ctx.moveTo(xx, plateY + 3);
+    ctx.lineTo(xx, plateY + plateH - 3);
+    ctx.stroke();
+  }
+
+  // ---- Fond imperméable ----
+  const baseY = soilBotNow;
+  const baseGrd = ctx.createLinearGradient(0, baseY, 0, baseY + 18);
+  baseGrd.addColorStop(0, '#374151');
+  baseGrd.addColorStop(1, '#1f2937');
+  ctx.fillStyle = baseGrd;
+  ctx.fillRect(15, baseY, W - 30, 18);
+  // Hachures
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  for (let xx = 20; xx < W - 20; xx += 15) {
+    ctx.beginPath();
+    ctx.moveTo(xx, baseY);
+    ctx.lineTo(xx - 10, baseY + 16);
+    ctx.stroke();
+  }
+  // Texte
+  ctx.fillStyle = 'rgba(148,163,184,0.7)';
+  ctx.font = '10px Consolas';
+  ctx.textAlign = 'center';
+  ctx.fillText('— COUCHE IMPERMÉABLE —', W / 2, baseY + 13);
+
+  // ---- Flèches de charge ----
+  if (state.appliedCharge > 0) {
+    const nLoad = 8;
+    const loadAlpha = Math.min(1, state.appliedCharge / 300);
+    for (let i = 0; i < nLoad; i++) {
+      const x = 40 + (i / (nLoad - 1)) * (W - 80);
+      const len = 20 + loadAlpha * 20;
+      drawLoadArrow(ctx, x, plateY - len - 5, x, plateY - 2, loadAlpha);
+    }
+    // Label charge
+    ctx.fillStyle = `rgba(245,158,11,${0.9})`;
+    ctx.font = 'bold 12px Segoe UI';
+    ctx.textAlign = 'center';
+    ctx.fillText(`σ = ${state.appliedCharge.toFixed(0)} kPa`, W / 2, plateY - 30);
+  }
+
+  // ---- Tassement indicator (cote) ----
+  if (state.settlement > 0.5) {
+    ctx.strokeStyle = 'rgba(6,182,212,0.7)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(W - 22, soilTop0);
+    ctx.lineTo(W - 22, soilTopNow);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Flèche double
+    drawBrace(ctx, W - 22, soilTop0, soilTopNow, `S=${state.settlement.toFixed(1)}mm`);
+  }
+
+  // ---- Échelle côté gauche ----
+  drawDepthScale(ctx, 15, soilTopNow, soilBotNow, state.H0, state.settlement);
+
+  // ---- Légende état ----
+  drawLegend(ctx, W, H);
+
+  // ---- Titre couche ----
+  ctx.fillStyle = 'rgba(148,163,184,0.6)';
+  ctx.font = '11px Segoe UI';
+  ctx.textAlign = 'left';
+  ctx.fillText(`H = ${(state.H0 - state.settlement/1000).toFixed(2)} m`, 25, soilBotNow - 8);
+}
+
+// ---- FLÈCHE D'ÉCOULEMENT ----
+function drawFlowArrow(ctx, x1, y1, x2, y2, intensity) {
+  if (intensity < 0.01) return;
+  const alpha = Math.min(0.7, intensity * 0.8);
+  ctx.save();
+  ctx.strokeStyle = `rgba(96,165,250,${alpha})`;
+  ctx.fillStyle   = `rgba(96,165,250,${alpha})`;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // Tête de flèche
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const ah = 7;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - ah * Math.cos(angle - 0.4), y2 - ah * Math.sin(angle - 0.4));
+  ctx.lineTo(x2 - ah * Math.cos(angle + 0.4), y2 - ah * Math.sin(angle + 0.4));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// ---- FLÈCHE DE CHARGE ----
+function drawLoadArrow(ctx, x1, y1, x2, y2, alpha) {
+  ctx.save();
+  ctx.strokeStyle = `rgba(245,158,11,${alpha})`;
+  ctx.fillStyle   = `rgba(245,158,11,${alpha})`;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  const ah = 8;
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - ah * Math.cos(angle - 0.4), y2 - ah * Math.sin(angle - 0.4));
+  ctx.lineTo(x2 - ah * Math.cos(angle + 0.4), y2 - ah * Math.sin(angle + 0.4));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// ---- COTE TASSEMENT ----
+function drawBrace(ctx, x, y1, y2, label) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(6,182,212,0.7)';
+  ctx.fillStyle   = 'rgba(6,182,212,0.9)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x - 3, y1); ctx.lineTo(x + 3, y1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x - 3, y2); ctx.lineTo(x + 3, y2); ctx.stroke();
+  ctx.font = '9px Consolas';
+  ctx.textAlign = 'right';
+  ctx.fillText(label, x - 5, (y1 + y2) / 2 + 4);
+  ctx.restore();
+}
+
+// ---- ÉCHELLE PROFONDEUR ----
+function drawDepthScale(ctx, x, top, bot, H, settle) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(71,85,105,0.6)';
+  ctx.fillStyle   = 'rgba(148,163,184,0.6)';
+  ctx.font = '9px Consolas';
+  ctx.textAlign = 'right';
+  ctx.lineWidth = 1;
+  const nTicks = 6;
+  for (let i = 0; i <= nTicks; i++) {
+    const frac = i / nTicks;
+    const y = top + frac * (bot - top);
+    const depth = frac * H;
+    ctx.beginPath();
+    ctx.moveTo(x, y); ctx.lineTo(x + 5, y);
+    ctx.stroke();
+    ctx.fillText(depth.toFixed(1), x - 1, y + 3);
+  }
+  // Axe vertical
+  ctx.beginPath();
+  ctx.moveTo(x, top); ctx.lineTo(x, bot);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ---- LÉGENDE ----
+function drawLegend(ctx, W, H) {
+  const items = [
+    { col: '#8b7355', label: 'Grain solide' },
+    { col: 'rgba(60,120,220,0.6)', label: 'Eau interstitielle' },
+    { col: 'rgba(96,165,250,0.7)', label: 'Écoulement' },
+    { col: 'rgba(245,158,11,0.9)', label: 'Charge σ' },
+  ];
+  let lx = W - 160;
+  const ly = 12;
+  items.forEach((it, i) => {
+    ctx.fillStyle = it.col;
+    ctx.fillRect(lx, ly + i * 14, 10, 10);
+    ctx.fillStyle = 'rgba(148,163,184,0.8)';
+    ctx.font = '9px Segoe UI';
+    ctx.textAlign = 'left';
+    ctx.fillText(it.label, lx + 14, ly + i * 14 + 9);
+  });
+}
+
+// ======================================================
+// PROFIL ISOCHRONES u(z, t)
+// ======================================================
+function drawProfile() {
+  const W = profCanvas.width;
+  const H = profCanvas.height;
+  profCtx.clearRect(0, 0, W, H);
+  profCtx.fillStyle = '#1c2230';
+  profCtx.fillRect(0, 0, W, H);
+
+  const pad = { l: 40, r: 10, t: 10, b: 25 };
+  const pw = W - pad.l - pad.r;
+  const ph = H - pad.t - pad.b;
+
+  // Grille
+  profCtx.strokeStyle = 'rgba(45,55,72,0.7)';
+  profCtx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const x = pad.l + (i / 5) * pw;
+    profCtx.beginPath(); profCtx.moveTo(x, pad.t); profCtx.lineTo(x, pad.t + ph); profCtx.stroke();
+  }
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (i / 4) * ph;
+    profCtx.beginPath(); profCtx.moveTo(pad.l, y); profCtx.lineTo(pad.l + pw, y); profCtx.stroke();
+  }
+
+  // Axes
+  profCtx.strokeStyle = 'rgba(71,85,105,0.9)';
+  profCtx.lineWidth = 1;
+  profCtx.beginPath();
+  profCtx.moveTo(pad.l, pad.t); profCtx.lineTo(pad.l, pad.t + ph);
+  profCtx.moveTo(pad.l, pad.t + ph); profCtx.lineTo(pad.l + pw, pad.t + ph);
+  profCtx.stroke();
+
+  // Labels
+  profCtx.fillStyle = 'rgba(100,116,139,0.9)';
+  profCtx.font = '8px Consolas';
+  profCtx.textAlign = 'center';
+  profCtx.fillText('u/Δσ', pad.l + pw/2, H - 5);
+  profCtx.save();
+  profCtx.translate(9, pad.t + ph/2);
+  profCtx.rotate(-Math.PI/2);
+  profCtx.fillText('z/H', 0, 0);
+  profCtx.restore();
+
+  // Ticks
+  profCtx.fillStyle = 'rgba(100,116,139,0.7)';
+  profCtx.font = '7px Consolas';
+  profCtx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (i / 4) * ph;
+    profCtx.fillText((i / 4).toFixed(2), pad.l - 3, y + 3);
+  }
+  profCtx.textAlign = 'center';
+  for (let i = 0; i <= 5; i++) {
+    const x = pad.l + (i / 5) * pw;
+    profCtx.fillText((i / 5).toFixed(1), x, pad.t + ph + 10);
+  }
+
+  if (state.appliedCharge === 0) return;
+
+  // Courbes isochrones pour plusieurs instants passés
+  const tvSnapshots = [0.01, 0.05, 0.1, 0.2, 0.3, 0.5, state.Tv];
+  const colors = [
+    '#3b82f6','#06b6d4','#10b981','#a3e635','#fbbf24','#f97316','#ef4444'
+  ];
+
+  tvSnapshots.forEach((Tv, idx) => {
+    if (Tv <= 0 || Tv > state.Tv + 0.001) return;
+    const col = colors[idx];
+    profCtx.beginPath();
+    const nPts = 60;
+    for (let i = 0; i <= nPts; i++) {
+      const z_frac = i / nPts;         // z/H ∈ [0,1]
+      const z = z_frac * state.H0;
+      const uRatio = calcUprofile(z, Tv, state.H0);
+      const px = pad.l + uRatio * pw;
+      const py = pad.t + z_frac * ph;
+      i === 0 ? profCtx.moveTo(px, py) : profCtx.lineTo(px, py);
+    }
+    profCtx.strokeStyle = col;
+    profCtx.lineWidth = (idx === tvSnapshots.length - 1) ? 2 : 1;
+    profCtx.setLineDash(idx === tvSnapshots.length - 1 ? [] : [3, 2]);
+    profCtx.stroke();
+    profCtx.setLineDash([]);
+  });
+
+  // Label Tv courant
+  profCtx.fillStyle = '#ef4444';
+  profCtx.font = 'bold 8px Consolas';
+  profCtx.textAlign = 'left';
+  profCtx.fillText(`Tv=${state.Tv.toFixed(3)}`, pad.l + 2, pad.t + 8);
+}
+
+// ======================================================
+// MINI GRAPHIQUES EN TEMPS RÉEL
+// ======================================================
+function pushHistory() {
+  const h = history;
+  h.T.push(state.time);
+  h.U.push(state.u_mean);
+  h.Sig.push(state.sigma_prime);
+  h.S.push(state.settlement);
+  h.H.push(state.H0 - state.settlement / 1000);
+  h.Udeg.push(state.U_deg * 100);
+  h.Q.push(state.q);
+  // Limiter historique
+  if (h.T.length > MAX_HIST) {
+    Object.keys(h).forEach(k => h[k].shift());
+  }
+}
+
+function drawMiniChart(ctx, canvas, data, color, unit, yMin, yMax) {
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  if (data.length < 2) return;
+
+  // Fond
+  ctx.fillStyle = 'rgba(13,17,23,0.6)';
+  ctx.fillRect(0, 0, W, H);
+
+  const mn = yMin !== undefined ? yMin : Math.min(...data);
+  const mx = yMax !== undefined ? yMax : Math.max(...data);
+  const range = mx - mn || 1;
+
+  // Aire sous la courbe
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = (i / (data.length - 1)) * W;
+    const y = H - ((v - mn) / range) * (H - 4) - 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, color.replace(')', ',0.3)').replace('rgb', 'rgba'));
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Ligne
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = (i / (data.length - 1)) * W;
+    const y = H - ((v - mn) / range) * (H - 4) - 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+function updateMiniCharts() {
+  const charge = state.appliedCharge;
+  drawMiniChart(miniCtx.U,    miniCanvases.U,    history.U,    '#ef4444', 'kPa', 0, charge || 10);
+  drawMiniChart(miniCtx.Sig,  miniCanvases.Sig,  history.Sig,  '#3b82f6', 'kPa', 0, charge || 10);
+  drawMiniChart(miniCtx.S,    miniCanvases.S,    history.S,    '#06b6d4', 'mm',  0);
+  drawMiniChart(miniCtx.H,    miniCanvases.H,    history.H,    '#8b5cf6', 'm');
+  drawMiniChart(miniCtx.Udeg, miniCanvases.Udeg, history.Udeg, '#10b981', '%', 0, 100);
+  drawMiniChart(miniCtx.Q,    miniCanvases.Q,    history.Q,    '#fbbf24', 'm³');
+}
+
+// ======================================================
+// MISE À JOUR UI
+// ======================================================
+function updateUI() {
+  const c = state.appliedCharge;
+  const u = state.u_mean;
+  const sp = state.sigma_prime;
+  const s = state.settlement;
+  const U = state.U_deg * 100;
+  const H_now = state.H0 - s / 1000;
+
+  // Valeurs mini charts
+  document.getElementById('cvU').textContent     = u.toFixed(1);
+  document.getElementById('cvSigma').textContent = sp.toFixed(1);
+  document.getElementById('cvS').textContent     = s.toFixed(1);
+  document.getElementById('cvH').textContent     = H_now.toFixed(3);
+  document.getElementById('cvUdeg').textContent  = U.toFixed(1);
+  document.getElementById('cvQ').textContent     = state.q.toFixed(4);
+
+  // Stats cards
+  document.getElementById('sCharge').textContent  = c.toFixed(0);
+  document.getElementById('sU').textContent        = u.toFixed(1);
+  document.getElementById('sSigmaP').textContent   = sp.toFixed(1);
+  document.getElementById('sSettle').textContent   = s.toFixed(2);
+  document.getElementById('sHeight').textContent   = H_now.toFixed(3);
+  document.getElementById('sU_deg').textContent    = U.toFixed(1);
+  document.getElementById('sTime').textContent     = state.time.toFixed(3);
+  document.getElementById('sTv').textContent       = state.Tv.toFixed(4);
+
+  // Barre consolidation
+  document.getElementById('consolPct').textContent = U.toFixed(1);
+  document.getElementById('consolFill').style.width = U + '%';
+  document.getElementById('u90flag').textContent = U >= 90 ? 'Oui ✓' : 'Non';
+  document.getElementById('u90flag').style.color = U >= 90 ? '#10b981' : '#4a5568';
+
+  // Time bar
+  const timeFrac = Math.min(1, state.time / (state.maxTime || 1));
+  document.getElementById('timeFill').style.width  = (timeFrac * 100) + '%';
+  document.getElementById('timeThumb').style.left  = (timeFrac * 100) + '%';
+  document.getElementById('timeDisplay').textContent = `t = ${state.time.toFixed(3)} ans | Tv = ${state.Tv.toFixed(4)}`;
+}
+
+// ======================================================
+// REDIMENSIONNEMENT CANVAS
+// ======================================================
+function resizeCanvases() {
+  const rect = soilCanvas.getBoundingClientRect();
+  soilCanvas.width  = rect.width  * devicePixelRatio;
+  soilCanvas.height = rect.height * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  // Profil
+  const prect = profCanvas.getBoundingClientRect();
+  profCanvas.width  = prect.width  * devicePixelRatio;
+  profCanvas.height = prect.height * devicePixelRatio;
+  profCtx.scale(devicePixelRatio, devicePixelRatio);
+
+  // Mini charts
+  Object.keys(miniCanvases).forEach(k => {
+    const c = miniCanvases[k];
+    const r = c.getBoundingClientRect();
+    c.width  = r.width  * devicePixelRatio;
+    c.height = r.height * devicePixelRatio;
+    miniCtx[k].scale(devicePixelRatio, devicePixelRatio);
+  });
+
+  initGrains();
+}
+
+// ======================================================
+// BOUCLE D'ANIMATION
+// ======================================================
+let lastTs = 0;
+const DT_REAL = 1 / 60; // s par frame
+
+function animate(timestamp) {
+  if (!lastTs) lastTs = timestamp;
+  const dtMs = timestamp - lastTs;
+  lastTs = timestamp;
+
+  if (state.playing && !state.stepMode) {
+    // Avance le temps de simulation
+    const dtSim = (dtMs / 1000) * state.speed * (state.maxTime / 30);
+    state.time = Math.min(state.time + dtSim, state.maxTime);
+
+    if (state.time >= state.maxTime) {
+      state.playing = false;
+      document.getElementById('btnPlay').classList.remove('active');
+    }
+  }
+
+  updatePhysics();
+
+  const rect = soilCanvas.getBoundingClientRect();
+  ctx.save();
+  ctx.setTransform(1,0,0,1,0,0);
+  drawSoil(timestamp / 1000);
+  ctx.restore();
+
+  const prect = profCanvas.getBoundingClientRect();
+  profCtx.save();
+  profCtx.setTransform(1,0,0,1,0,0);
+  drawProfile();
+  profCtx.restore();
+
+  // Pousser historique toutes les N frames
+  if (Math.floor(timestamp / 200) !== Math.floor((timestamp - dtMs) / 200)) {
+    pushHistory();
+    updateMiniCharts();
+  }
+
+  updateUI();
+  requestAnimationFrame(animate);
+}
+
+// ======================================================
+// CONTRÔLES — EVENT LISTENERS
+// ======================================================
+
+// Charge slider
+document.getElementById('chargeSlider').addEventListener('input', function() {
+  state.pendingCharge = parseFloat(this.value);
+  document.getElementById('chargeDisplay').innerHTML = `${state.pendingCharge} <span class="charge-unit">kPa</span>`;
+});
+
+// Boutons charge
+document.getElementById('btnPlus10').addEventListener('click', () => {
+  state.pendingCharge = Math.min(1000, state.pendingCharge + 10);
+  document.getElementById('chargeSlider').value = state.pendingCharge;
+  document.getElementById('chargeDisplay').innerHTML = `${state.pendingCharge} <span class="charge-unit">kPa</span>`;
+});
+document.getElementById('btnMinus10').addEventListener('click', () => {
+  state.pendingCharge = Math.max(0, state.pendingCharge - 10);
+  document.getElementById('chargeSlider').value = state.pendingCharge;
+  document.getElementById('chargeDisplay').innerHTML = `${state.pendingCharge} <span class="charge-unit">kPa</span>`;
+});
+
+document.getElementById('btnApply').addEventListener('click', () => {
+  // Appliquer la charge : recommence la consolidation
+  state.appliedCharge = state.pendingCharge;
+  state.time = 0;
+  Object.keys(history).forEach(k => history[k] = []);
+  updateMaxTime();
+  document.getElementById('sCharge').textContent = state.appliedCharge.toFixed(0);
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  state.appliedCharge = 0;
+  state.pendingCharge = 0;
+  state.time = 0;
+  state.playing = false;
+  document.getElementById('chargeSlider').value = 0;
+  document.getElementById('chargeDisplay').innerHTML = `0 <span class="charge-unit">kPa</span>`;
+  document.getElementById('btnPlay').classList.remove('active');
+  Object.keys(history).forEach(k => history[k] = []);
+  initGrains();
+});
+
+// Lecture / Pause
+document.getElementById('btnPlay').addEventListener('click', () => {
+  state.playing = true;
+  state.stepMode = false;
+  document.getElementById('btnPlay').classList.add('active');
+  document.getElementById('btnPause').classList.remove('active');
+});
+document.getElementById('btnPause').addEventListener('click', () => {
+  state.playing = false;
+  state.stepMode = false;
+  document.getElementById('btnPlay').classList.remove('active');
+  document.getElementById('btnPause').classList.add('active');
+});
+document.getElementById('btnRewind').addEventListener('click', () => {
+  state.time = 0;
+  state.playing = false;
+  document.getElementById('btnPlay').classList.remove('active');
+  Object.keys(history).forEach(k => history[k] = []);
+});
+document.getElementById('btnStep').addEventListener('click', () => {
+  // Avance d'un petit pas
+  const step = state.maxTime / 100;
+  state.time = Math.min(state.time + step, state.maxTime);
+  pushHistory();
+  updateMiniCharts();
+});
+
+// Vitesse
+document.getElementById('speedSlider').addEventListener('input', function() {
+  state.speed = parseFloat(this.value);
+  document.getElementById('speedVal').textContent = state.speed.toFixed(1) + '×';
+});
+
+// Time track — clic pour positionner
+document.getElementById('timeTrack').addEventListener('click', function(e) {
+  const rect = this.getBoundingClientRect();
+  const frac = (e.clientX - rect.left) / rect.width;
+  state.time = Math.max(0, Math.min(1, frac)) * state.maxTime;
+  Object.keys(history).forEach(k => history[k] = []);
+});
+
+// Type de sol
+document.getElementById('soilType').addEventListener('change', function() {
+  const s = SOIL_TYPES[this.value];
+  state.Cv = s.Cv;
+  state.n  = s.n;
+  state.k  = s.k;
+  state.mv = s.mv;
+  document.getElementById('pCv').value = s.Cv;
+  document.getElementById('pN').value  = s.n;
+  document.getElementById('pK').value  = Math.log10(s.k);
+  document.getElementById('pMv').value = Math.log10(s.mv);
+  document.getElementById('vCv').textContent = s.Cv.toFixed(2);
+  document.getElementById('vN').textContent  = s.n.toFixed(2);
+  document.getElementById('vK').textContent  = s.k.toExponential(1);
+  document.getElementById('vMv').textContent = s.mv.toExponential(2);
+  document.getElementById('soilInfo').innerHTML =
+    `<b>${s.name}</b><br>${s.label}<br>Cv = ${s.Cv} m²/an<br>k = ${s.k.toExponential(1)} m/s`;
+  state.time = 0;
+  Object.keys(history).forEach(k => history[k] = []);
+  updateMaxTime();
+});
+
+// Paramètres sliders
+function bindParam(sliderId, displayId, key, transform) {
+  document.getElementById(sliderId).addEventListener('input', function() {
+    const raw = parseFloat(this.value);
+    const val = transform ? transform(raw) : raw;
+    state[key] = val;
+    document.getElementById(displayId).textContent =
+      (val < 0.001 || val > 9999) ? val.toExponential(1) : val.toFixed(key === 'n' ? 2 : 1);
+    updateMaxTime();
+    state.time = 0;
+    Object.keys(history).forEach(k => history[k] = []);
+    initGrains();
+  });
+}
+bindParam('pH',   'vH',   'H0',  null);
+bindParam('pCv',  'vCv',  'Cv',  null);
+bindParam('pN',   'vN',   'n',   null);
+bindParam('pK',   'vK',   'k',   v => Math.pow(10, v));
+bindParam('pRho', 'vRho', 'rho', null);
+bindParam('pMv',  'vMv',  'mv',  v => Math.pow(10, v));
+bindParam('pGW',  'vGW',  'gw',  null);
+
+// Sync initial display
+document.getElementById('vH').textContent  = state.H0;
+document.getElementById('vCv').textContent = state.Cv;
+document.getElementById('vN').textContent  = state.n.toFixed(2);
+document.getElementById('vK').textContent  = state.k.toExponential(1);
+document.getElementById('vMv').textContent = state.mv.toExponential(2);
+document.getElementById('vRho').textContent = state.rho.toFixed(2);
+
+// ======================================================
+// UTILITAIRES
+// ======================================================
+function lighten(hex, amt) {
+  let r = parseInt(hex.slice(1,3),16) + amt;
+  let g = parseInt(hex.slice(3,5),16) + amt;
+  let b = parseInt(hex.slice(5,7),16) + amt;
+  r = Math.min(255, r); g = Math.min(255, g); b = Math.min(255, b);
+  return `rgb(${r},${g},${b})`;
+}
+
+// Générateur pseudo-aléatoire déterministe (seed)
+function seededRNG(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
+
+// ======================================================
+// DÉMARRAGE
+// ======================================================
+window.addEventListener('resize', () => {
+  resizeCanvases();
+});
+
+// Initialiser info sol
+document.getElementById('soilInfo').innerHTML =
+  `<b>Argile molle</b><br>Très compressible, faible perméabilité<br>Cv = 0.5 m²/an<br>k = 1×10⁻¹⁰ m/s`;
+
+updateMaxTime();
+resizeCanvases();
+requestAnimationFrame(animate);
+
+</script>
+
+<script>
+// ── PWA SERVICE WORKER REGISTRATION ──────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('[TerzaGeo PWA] Service Worker enregistré :', reg.scope))
+      .catch(err => console.warn('[TerzaGeo PWA] Erreur SW :', err));
+  });
+}
+
+// ── INSTALL PROMPT (bouton "Installer l'app") ─────────────────────────────────
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Afficher le bouton d'installation dans le header
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'flex';
+});
+
+function installApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(result => {
+    console.log('[TerzaGeo PWA] Installation :', result.outcome);
+    deferredPrompt = null;
+    const btn = document.getElementById('installBtn');
+    if (btn) btn.style.display = 'none';
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  console.log('[TerzaGeo PWA] Application installée avec succès !');
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'none';
+});
+</script>
+
+</body>
+</html>

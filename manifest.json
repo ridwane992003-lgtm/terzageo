@@ -1,0 +1,35 @@
+{
+  "name": "TerzaGeo — Consolidation de Terzaghi",
+  "short_name": "TerzaGeo",
+  "description": "Simulation interactive de consolidation 1D des sols saturés selon la théorie de Terzaghi (1925). Université Amadou Mahtar Mbow — Sciences de la Mer.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0d1117",
+  "theme_color": "#3b82f6",
+  "lang": "fr",
+  "categories": ["education", "science", "utilities"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Lancer la simulation",
+      "short_name": "Simuler",
+      "description": "Ouvre directement la simulation de consolidation",
+      "url": "./index.html"
+    }
+  ]
+}
